@@ -1,7 +1,6 @@
 /**
  * Шаблонизатор на основе EJS
- * 1) производит минификацию js и css при компиляции шаблона
- * 2) позволяет подключать подшаблоны
+ * производит минификацию js и css при компиляции шаблона
  */
 
 'use strict';
@@ -27,12 +26,15 @@ class Mjs extends EventEmitter {
 		this.options = Object.assign({
 			compress   : true,
 			watch      : false,
-			precompile : false
+			precompile : false,
+			log        : false
 		}, options);
 
 		if (! this.options.root) {
 			throw new Error('MJS: set root dir!');
 		}
+
+		this.log = this.options.log ? console.log : () => {};
 
 		this.configure();
 	}
@@ -41,7 +43,7 @@ class Mjs extends EventEmitter {
 		// Обновление шаблонов для отладки
 		if (this.options.watch) {
 			setInterval(() => {
-				console.log('MJS: clear cache');
+				// this.log('MJS: clear cache');
 				this.cache.clearAll();
 			}, 1000);
 		}
@@ -49,7 +51,7 @@ class Mjs extends EventEmitter {
 		if (this.options.precompile) {
 			let ts = Date.now();
 			this.precompile(this.options.root);
-			console.log('MJS COMPILE TIME %sms', Date.now() - ts);
+			this.log('MJS COMPILE TIME %sms', Date.now() - ts);
 		}
 
 		this.renderFile = this.renderFile.bind(this);
@@ -72,7 +74,7 @@ class Mjs extends EventEmitter {
 			.forEach(tmplname => {
 				let tmplpath = path.resolve(dir, tmplname);
 				this.compileFile(tmplpath, () => {
-					console.log('MJS: [%s] precompiled', path.relative(this.options.root, tmplpath));
+					this.log('MJS: [%s] precompiled', path.relative(this.options.root, tmplpath));
 				});
 			});
 	}
@@ -147,7 +149,7 @@ class Mjs extends EventEmitter {
 		let compiled = this.cache.getCompiled(hash);
 
 		if (! compiled) {
-			console.log('MJS: [%s] compile', hash);
+			this.log('MJS: [%s] compile', hash);
 
 			try {
 				let sourceText = this.read(hash);
@@ -165,7 +167,7 @@ class Mjs extends EventEmitter {
 
 				let compressFactor = Math.round(compiled.length / sourceText.length * 100);
 				let compressTime   = Date.now() - ts;
-				console.log(`MJS: [${hash}] ${sourceText.length} -> ${compiled.length}, ${compressFactor}%, ${compressTime}ms`);
+				this.log(`MJS: [${hash}] ${sourceText.length} -> ${compiled.length}, ${compressFactor}%, ${compressTime}ms`);
 				compiled = ejs.compile(compiled);
 			} catch (err) {
 				return cb(err);
@@ -202,7 +204,6 @@ class Cache {
 	// получить исходный текст шаблона
 	setSourceText (hash, text) {
 		this.sourceCache[hash] = text;
-		// console.log(hash, this.sourceCache)
 	}
 	// получить скомпилированную функцию
 	getCompiled (hash) {
